@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 #include <windows.h>
+#include <sstream>
 
 using namespace std;
 
@@ -231,6 +232,86 @@ public:
     }
 };
 
+class ContentMenuScreen : public BaseScreen {
+private:
+    map<int, string> list_strings;
+    Cryption crpt = Cryption();
+
+    map<int, string> readFile(const string& file_patch) {
+        ifstream inFile(file_patch);
+        if (!inFile.is_open()) {
+            cerr << "Ошибка открытия файла!" << endl;
+            return list_strings;
+        }
+
+        string line;
+        int line_number = 1;
+        while (getline(inFile, line)) {
+            list_strings[line_number++] = line;
+        }
+        inFile.close();
+        return list_strings;
+    }
+
+    bool copyToClipboard(std::string_view text) {
+        if (!OpenClipboard(nullptr)) return false;
+
+        // Автоматическое освобождение ресурсов
+        struct ClipboardGuard {
+            ~ClipboardGuard() { CloseClipboard(); }
+        } guard;
+
+        EmptyClipboard();
+
+        // Прямое преобразование в wstring (C++20)
+        std::wstring wtext(text.begin(), text.end());
+
+        // Выделение памяти с автоматическим управлением
+        HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, (wtext.size() + 1) * sizeof(wchar_t));
+        if (!hMem) return false;
+
+        auto pMem = static_cast<wchar_t*>(GlobalLock(hMem));
+        wcscpy_s(pMem, wtext.size() + 1, wtext.c_str());
+        GlobalUnlock(hMem);
+
+        return SetClipboardData(CF_UNICODETEXT, hMem) != nullptr;
+    }
+
+public:
+    ContentMenuScreen() {
+        list_strings = { {0, "Назад"}};
+    }
+
+    void show() override {
+        clearScreen();
+        list_strings = readFile(TRUE_FILE);
+        list_strings[0] = "Назад"; // Гарантируем, что пункт "Назад" есть
+        drawBox("Содержимое файла", list_strings);
+    }
+
+    void handleInput(int choice) override {
+        if (choice == 0) {
+            status = "Возврат в предыдущее меню";
+        }
+        else if (list_strings.count(choice)) {
+            try {
+                if (copyToClipboard(list_strings[choice])) {
+                    status = "Успешно скопировано в буфер обмена: " + list_strings[choice];
+                }
+                else {
+                    status = "Ошибка копирования в буфер обмена!";
+                }
+            }
+            catch (...) {
+                status = "Ошибка при выполнении операции!";
+            }
+        }
+        else {
+            status = "Неверный пункт меню!";
+        }
+    }
+};
+
 // Менеджер экранов
 class ScreenManager {
     map<string, unique_ptr<BaseScreen>> screens;
@@ -239,8 +320,11 @@ class ScreenManager {
 public:
     ScreenManager() {
         screens["main"] = make_unique<MainMenuScreen>();
+        screens["content"] = make_unique<ContentMenuScreen>();
         current_screen = "main";
     }
+
+
 
     void run() {
         while (true) {
@@ -266,10 +350,6 @@ int main() {
     SetConsoleOutputCP(CP_UTF8);
     SetConsoleCP(CP_UTF8);
     setlocale(LC_ALL, "Russian");
-
-    if (GetConsoleOutputCP() != CP_UTF8) {
-        cerr << "Не удалось установить UTF-8!\n";
-    }
 
     ScreenManager manager;
     manager.run();
