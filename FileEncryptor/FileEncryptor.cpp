@@ -9,6 +9,7 @@
 #include <vector>
 #include <windows.h>
 #include <sstream>
+#include <stack>
 
 using namespace std;
 
@@ -140,10 +141,16 @@ public:
     }
 };
 
+enum class ScreenType {
+    MAIN,
+    CONTENT
+};
+
 // Базовый абстрактный класс для всех экранов
 class BaseScreen {
 protected:
     string status = "Готов к работе";
+    ScreenType nextScreen = ScreenType::MAIN; // По умолчанию возвращаемся в главное меню
 
     void drawBox(const string& title, const map<int, string>& options) const {
         // Рассчитываем максимальную длину
@@ -186,6 +193,7 @@ protected:
 public:
     virtual void show() = 0;
     virtual void handleInput(int choice) = 0;
+    virtual ScreenType getNextScreen() const { return nextScreen; }
     virtual ~BaseScreen() = default;
 };
 
@@ -199,35 +207,36 @@ public:
         menu_options = {
             {1, {"Зашифровать файл", [this] { crpt.encrypt(TRUE_FILE, KEY); }}},
             {2, {"Расшифровать файл", [this] { crpt.decrypt(TRUE_FILE, KEY); }}},
-            {3, {"Просмотреть содержимое", [] { /* Просмотр */ }}},
+            {3, {"Просмотреть содержимое", [this] { nextScreen = ScreenType::CONTENT; }}},
             {0, {"Выход", [] { exit(0); }}}
         };
+        nextScreen = ScreenType::MAIN;
     }
 
     void show() override {
         clearScreen();
-
-        // Подготавливаем данные для отрисовки
         map<int, string> options;
         for (const auto& [key, value] : menu_options) {
             options[key] = value.first;
         }
-
         drawBox("Главное меню", options);
     }
 
     void handleInput(int choice) override {
         if (menu_options.count(choice)) {
             try {
+                nextScreen = ScreenType::MAIN;
                 menu_options[choice].second();
                 status = "Успешно: " + menu_options[choice].first;
             }
             catch (...) {
                 status = "Ошибка при выполнении операции!";
+                nextScreen = ScreenType::MAIN;
             }
         }
         else {
             status = "Неверный пункт меню!";
+            nextScreen = ScreenType::MAIN;
         }
     }
 };
@@ -279,18 +288,20 @@ private:
 
 public:
     ContentMenuScreen() {
-        list_strings = { {0, "Назад"}};
+        list_strings = { {0, "Назад"} };
+        nextScreen = ScreenType::CONTENT;
     }
 
     void show() override {
         clearScreen();
         list_strings = readFile(TRUE_FILE);
-        list_strings[0] = "Назад"; // Гарантируем, что пункт "Назад" есть
+        list_strings[0] = "Назад";
         drawBox("Содержимое файла", list_strings);
     }
 
     void handleInput(int choice) override {
         if (choice == 0) {
+            nextScreen = ScreenType::MAIN;
             status = "Возврат в предыдущее меню";
         }
         else if (list_strings.count(choice)) {
@@ -301,34 +312,35 @@ public:
                 else {
                     status = "Ошибка копирования в буфер обмена!";
                 }
+                nextScreen = ScreenType::CONTENT;
             }
             catch (...) {
                 status = "Ошибка при выполнении операции!";
+                nextScreen = ScreenType::CONTENT;
             }
         }
         else {
             status = "Неверный пункт меню!";
+            nextScreen = ScreenType::CONTENT;
         }
     }
 };
 
-// Менеджер экранов
 class ScreenManager {
-    map<string, unique_ptr<BaseScreen>> screens;
-    string current_screen;
+private:
+    map<ScreenType, unique_ptr<BaseScreen>> screens;
+    ScreenType currentScreen = ScreenType::MAIN;
+    stack<ScreenType> screenHistory;
 
 public:
     ScreenManager() {
-        screens["main"] = make_unique<MainMenuScreen>();
-        screens["content"] = make_unique<ContentMenuScreen>();
-        current_screen = "main";
+        screens[ScreenType::MAIN] = make_unique<MainMenuScreen>();
+        screens[ScreenType::CONTENT] = make_unique<ContentMenuScreen>();
     }
-
-
 
     void run() {
         while (true) {
-            screens[current_screen]->show();
+            screens[currentScreen]->show();
 
             int choice;
             cout << "\nВыберите опцию: ";
@@ -340,7 +352,17 @@ public:
                 continue;
             }
 
-            screens[current_screen]->handleInput(choice);
+            screens[currentScreen]->handleInput(choice);
+            ScreenType nextScreen = screens[currentScreen]->getNextScreen();
+
+            if (nextScreen != currentScreen) {
+                screenHistory.push(currentScreen);
+                currentScreen = nextScreen;
+            }
+            else if (choice == 0 && !screenHistory.empty()) {
+                currentScreen = screenHistory.top();
+                screenHistory.pop();
+            }
         }
     }
 };
@@ -350,6 +372,16 @@ int main() {
     SetConsoleOutputCP(CP_UTF8);
     SetConsoleCP(CP_UTF8);
     setlocale(LC_ALL, "Russian");
+
+    // Установка размеров консоли (ширина: 170, высота: 50)
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (hConsole != INVALID_HANDLE_VALUE) {
+        COORD bufferSize = { 170, 500 };  
+        SetConsoleScreenBufferSize(hConsole, bufferSize);
+
+        SMALL_RECT windowSize = { 0, 0, 169, 49 };
+        SetConsoleWindowInfo(hConsole, TRUE, &windowSize);
+    }
 
     ScreenManager manager;
     manager.run();
