@@ -109,17 +109,18 @@ public:
         if (bs.isBase64(file_content)) {
             cerr << "Файл уже зашифрован!" << endl;
         }
+        else {
+            // Шифрование → Base64
+            string encrypted = xorEncrypt(file_content, key);
+            string base64Encrypted = bs.base64_encode(encrypted);
 
-        // Шифрование → Base64
-        string encrypted = xorEncrypt(file_content, key);
-        string base64Encrypted = bs.base64_encode(encrypted);
+            // Запись
+            ofstream outFile(file_patch, ios::binary | ios::trunc);
+            outFile.write(base64Encrypted.c_str(), base64Encrypted.size());
+            outFile.close();
 
-        // Запись
-        ofstream outFile(file_patch, ios::binary | ios::trunc);
-        outFile.write(base64Encrypted.c_str(), base64Encrypted.size());
-        outFile.close();
-
-        cout << "Файл успешно зашифрован." << endl;
+            cout << "Файл успешно зашифрован." << endl;
+        }
     }
 
     void decrypt(const string& file_patch, const string& key) {
@@ -127,17 +128,18 @@ public:
         if (!bs.isBase64(file_content)) {
             cerr << "Файл не зашифрован или поврежден!" << endl;
         }
+        else {
+            // Дешифровка
+            string readEncrypted = bs.base64_decode(file_content);
+            string decrypted = xorEncrypt(readEncrypted, key);
 
-        // Дешифровка
-        string readEncrypted = bs.base64_decode(file_content);
-        string decrypted = xorEncrypt(readEncrypted, key);
+            // Запись
+            ofstream outFile(file_patch, ios::binary | ios::trunc);
+            outFile.write(decrypted.c_str(), decrypted.size());
+            outFile.close();
 
-        // Запись
-        ofstream outFile(file_patch, ios::binary | ios::trunc);
-        outFile.write(decrypted.c_str(), decrypted.size());
-        outFile.close();
-
-        cout << "Файл успешно расшифрован." << endl;
+            cout << "Файл успешно расшифрован." << endl;
+        }
     }
 };
 
@@ -200,7 +202,27 @@ public:
 class MainMenuScreen : public BaseScreen {
 private:
     map<int, pair<string, function<void()>>> menu_options;
+    Base64 bs = Base64();
     Cryption crpt = Cryption();
+
+    void exitProgramm(const string& file_patch, const string& key) {
+        // Чтение файла
+        ifstream inFile(file_patch, ios::binary);
+        if (!inFile.is_open()) {
+            cerr << "Ошибка открытия файла!" << endl;
+        }
+
+        string data((istreambuf_iterator<char>(inFile)), {});
+        inFile.close();
+
+        if (bs.isBase64(data)) {
+            ExitProcess(0);
+        }
+        else {
+            crpt.encrypt(file_patch, key);
+            ExitProcess(0);
+        }
+    }
 
 public:
     MainMenuScreen() {
@@ -208,7 +230,7 @@ public:
             {1, {"Зашифровать файл", [this] { crpt.encrypt(TRUE_FILE, KEY); }}},
             {2, {"Расшифровать файл", [this] { crpt.decrypt(TRUE_FILE, KEY); }}},
             {3, {"Просмотреть содержимое", [this] { nextScreen = ScreenType::CONTENT; }}},
-            {0, {"Выход", [] { exit(0); }}}
+            {0, {"Выход", [this] { exitProgramm(TRUE_FILE, KEY); }}}
         };
         nextScreen = ScreenType::MAIN;
     }
@@ -262,6 +284,20 @@ private:
         return list_strings;
     }
 
+    string stringForCopy(string text) {
+        for (size_t i = 0; i < text.size(); i++) {
+            if (text[i] == 'h' && text.substr(i, 6) == "https:") {
+                return text.substr(i);
+            }
+            
+            if (i > 0 && i + 1 < text.size() && text[i] == '-'
+                && text[i - 1] == ' ' && text[i + 1] == ' ') {
+                return text.substr(0, i - 1);
+            }
+        }
+        return text;
+    }
+
     bool copyToClipboard(std::string_view text) {
         if (!OpenClipboard(nullptr)) return false;
 
@@ -306,7 +342,7 @@ public:
         }
         else if (list_strings.count(choice)) {
             try {
-                if (copyToClipboard(list_strings[choice])) {
+                if (copyToClipboard(stringForCopy(list_strings[choice]))) {
                     status = "Успешно скопировано в буфер обмена: " + list_strings[choice];
                 }
                 else {
