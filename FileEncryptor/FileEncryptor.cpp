@@ -10,6 +10,8 @@
 #include <windows.h>
 #include <sstream>
 #include <stack>
+#include <locale>
+#include <codecvt>
 
 using namespace std;
 
@@ -145,7 +147,8 @@ public:
 
 enum class ScreenType {
     MAIN,
-    CONTENT
+    CONTENT,
+    ADD
 };
 
 // Базовый абстрактный класс для всех экранов
@@ -230,6 +233,7 @@ public:
             {1, {"Зашифровать файл", [this] { crpt.encrypt(TRUE_FILE, KEY); }}},
             {2, {"Расшифровать файл", [this] { crpt.decrypt(TRUE_FILE, KEY); }}},
             {3, {"Просмотреть содержимое", [this] { nextScreen = ScreenType::CONTENT; }}},
+            {4, {"Добавить элемент", [this] {nextScreen = ScreenType::ADD; }}},
             {0, {"Выход", [this] { exitProgramm(TRUE_FILE, KEY); }}}
         };
         nextScreen = ScreenType::MAIN;
@@ -266,22 +270,48 @@ public:
 class ContentMenuScreen : public BaseScreen {
 private:
     map<int, string> list_strings;
-    Cryption crpt = Cryption();
+    Base64 bs = Base64();
 
     map<int, string> readFile(const string& file_patch) {
-        ifstream inFile(file_patch);
+        map<int, string> result;
+
+        // Чтение файла с проверкой ошибок
+        ifstream inFile(file_patch, ios::binary);
         if (!inFile.is_open()) {
-            cerr << "Ошибка открытия файла!" << endl;
-            return list_strings;
+            result[1] = "Ошибка открытия файла!";
+            return result;
         }
 
-        string line;
-        int line_number = 1;
-        while (getline(inFile, line)) {
-            list_strings[line_number++] = line;
-        }
+        // Получаем размер файла
+        inFile.seekg(0, ios::end);
+        size_t file_size = inFile.tellg();
+        inFile.seekg(0, ios::beg);
+
+        // Читаем содержимое
+        string fileContent;
+        fileContent.resize(file_size);
+        inFile.read(&fileContent[0], file_size);
         inFile.close();
-        return list_strings;
+
+        // Проверяем, является ли содержимое Base64
+        bool is_b64 = bs.isBase64(fileContent);
+        if (is_b64) {
+            // Если Base64 - сообщаем о зашифрованном файле
+            result[1] = "Программа не может прочитать файл, так как он зашифрован!";
+        }
+        else {
+            // Если не Base64 - читаем построчно
+            istringstream iss(fileContent);
+            string line;
+            int line_number = 1;
+            while (getline(iss, line)) {
+                // Удаляем \r для корректной обработки Windows-файлов
+                line.erase(remove(line.begin(), line.end(), '\r'), line.end());
+                result[line_number++] = line;
+            }
+        }
+
+        return result;
     }
 
     string stringForCopy(string text) {
@@ -362,6 +392,148 @@ public:
     }
 };
 
+class AddMenuScreen : public BaseScreen {
+private:
+    map<int, string> list_strings;
+    Base64 bs = Base64();
+
+    map<int, string> readFile(const string& file_patch) {
+        map<int, string> result;
+
+        // Чтение файла с проверкой ошибок
+        ifstream inFile(file_patch, ios::binary);
+        if (!inFile.is_open()) {
+            result[1] = "Ошибка открытия файла!";
+            return result;
+        }
+
+        // Получаем размер файла
+        inFile.seekg(0, ios::end);
+        size_t file_size = inFile.tellg();
+        inFile.seekg(0, ios::beg);
+
+        // Читаем содержимое
+        string fileContent;
+        fileContent.resize(file_size);
+        inFile.read(&fileContent[0], file_size);
+        inFile.close();
+
+        // Проверяем, является ли содержимое Base64
+        bool is_b64 = bs.isBase64(fileContent);
+        if (is_b64) {
+            // Если Base64 - сообщаем о зашифрованном файле
+            result[1] = "Программа не может прочитать файл, так как он зашифрован!";
+        }
+        else {
+            // Если не Base64 - читаем построчно
+            istringstream iss(fileContent);
+            string line;
+            int line_number = 1;
+            while (getline(iss, line)) {
+                // Удаляем \r для корректной обработки Windows-файлов
+                line.erase(remove(line.begin(), line.end(), '\r'), line.end());
+                result[line_number++] = line;
+            }
+        }
+
+        return result;
+    }
+
+    bool addObject(const int& line_number, const string& new_line, const string& file_patch) {
+        // Чтение файла
+        ifstream input_file(file_patch);
+        if (!input_file.is_open()) {
+            return false;
+        }
+
+        vector<string> lines;
+        string line;
+        while (getline(input_file, line)) {
+            lines.push_back(line);
+        }
+        input_file.close();
+
+        // Проверка корректности line_number
+        if (line_number < 0 || line_number >= lines.size()) {
+            return false;
+        }
+
+        // Проверка строки
+        if (lines[line_number].empty() || lines[line_number] == "\n") {
+            // Заменяем строку
+            lines[line_number] = new_line + "\n";
+
+            // Запись обратно в файл
+            ofstream output_file(file_patch);
+            if (!output_file.is_open()) {
+                return false;
+            }
+
+            // Записываем все строки
+            for (size_t i = 0; i < lines.size(); ++i) {
+                output_file << lines[i];
+                if (i != lines.size() - 1) {
+                    output_file << "\n";
+                }
+            }
+            output_file.close();
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+public:
+    AddMenuScreen() {
+        list_strings = { {0, "Назад"} };
+        nextScreen = ScreenType::ADD;
+    }
+
+    void show() override {
+        clearScreen();
+        list_strings = readFile(TRUE_FILE);
+        list_strings[0] = "Назад";
+        drawBox("Добавление элемента", list_strings);
+    }
+
+    void handleInput(int choice) override {
+        if (choice == 0) {
+            nextScreen = ScreenType::MAIN;
+            status = "Возврат в предыдущее меню";
+            return;
+        }
+
+        if (choice > 0 && list_strings.count(choice)) {
+            try {
+                // Читаем всю строку (включая пробелы)
+                string input;
+                cin.ignore(); // Очищаем буфер перед чтением
+                getline(cin, input);
+
+                // Вызываем addObject с правильным номером строки
+                // choice - 1 потому что пункт 0 = "Назад"
+                if (addObject(choice - 1, input, TRUE_FILE)) {
+                    status = "Успешно добавлено в файл!";
+                }
+                else {
+                    status = "Ошибка при записи в файл!";
+                }
+            }
+            catch (const exception& e) {
+                status = "Ошибка: " + string(e.what());
+            }
+            catch (...) {
+                status = "Неизвестная ошибка!";
+            }
+        }
+        else {
+            status = "Неверный пункт меню!";
+        }
+
+        nextScreen = ScreenType::ADD;
+    }
+};
+
 class ScreenManager {
 private:
     map<ScreenType, unique_ptr<BaseScreen>> screens;
@@ -372,6 +544,7 @@ public:
     ScreenManager() {
         screens[ScreenType::MAIN] = make_unique<MainMenuScreen>();
         screens[ScreenType::CONTENT] = make_unique<ContentMenuScreen>();
+        screens[ScreenType::ADD] = make_unique<AddMenuScreen>();
     }
 
     void run() {
@@ -405,8 +578,8 @@ public:
 
 int main() {
     // Настройка кодировки
-    SetConsoleOutputCP(CP_UTF8);
-    SetConsoleCP(CP_UTF8);
+    SetConsoleOutputCP(1251);
+    SetConsoleCP(1251);
     setlocale(LC_ALL, "Russian");
 
     // Установка размеров консоли (ширина: 170, высота: 50)
