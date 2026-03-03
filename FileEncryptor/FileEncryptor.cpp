@@ -1,17 +1,17 @@
 ﻿#include <algorithm>
+#include <codecvt>
 #include <fstream>
 #include <functional>
 #include <iostream>
 #include <limits>
+#include <locale>
 #include <map>
 #include <memory>
+#include <sstream>
+#include <stack>
 #include <string>
 #include <vector>
 #include <windows.h>
-#include <sstream>
-#include <stack>
-#include <locale>
-#include <codecvt>
 
 using namespace std;
 
@@ -41,7 +41,7 @@ public:
         }
         return true;
     }
-
+    
     string base64_encode(const string& in) {
         string out;
         int val = 0, valb = -6;
@@ -78,7 +78,7 @@ public:
 };
 
 // Класс для работы с шифрованием/дешифрованием
-class Cryption {
+class Cryption_lol {
 private:
     Base64 bs = Base64();
 
@@ -104,7 +104,7 @@ private:
         return data;
     }
 public:
-    Cryption() = default;
+    Cryption_lol() = default;
 
     void encrypt(const string& file_patch, const string& key) {
         const string file_content = readFile(file_patch);
@@ -206,7 +206,7 @@ class MainMenuScreen : public BaseScreen {
 private:
     map<int, pair<string, function<void()>>> menu_options;
     Base64 bs = Base64();
-    Cryption crpt = Cryption();
+    Cryption_lol crpt = Cryption_lol();
 
     void exitProgramm(const string& file_patch, const string& key) {
         // Чтение файла

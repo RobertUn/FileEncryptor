@@ -1,7 +1,7 @@
 #pragma once
 
 #include <string>
-#include "C:/Development/Ñ++projects/FileEncryptor/FileEncryptor/include/nlohmann/json.hpp"
+#include "../include/nlohmann/json.hpp"
 
 using json = nlohmann::json;
 using ordered_json = nlohmann::ordered_json;

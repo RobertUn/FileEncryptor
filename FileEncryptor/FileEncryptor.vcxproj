@@ -76,6 +76,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>C:\Development\С++projects\FileEncryptor\FileEncryptor\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -90,6 +92,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>C:\Development\С++projects\FileEncryptor\FileEncryptor\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -103,6 +107,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>C:\Development\С++projects\FileEncryptor\FileEncryptor\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -117,6 +122,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>C:\Development\С++projects\FileEncryptor\FileEncryptor\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -124,7 +131,38 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="FileEncryptor.cpp" />
+    <ClCompile Include="src\cli\interface.cpp" />
+    <ClCompile Include="src\FileModule\FileUtils\FileName.cpp" />
+    <ClCompile Include="src\FileModule\FileUtils\Backup.cpp" />
+    <ClCompile Include="src\FileModule\FileProcess.cpp" />
+    <ClCompile Include="src\FileModule\FileIO.cpp" />
+    <ClCompile Include="src\CryptoModule\AESDecryptor.cpp" />
+    <ClCompile Include="src\CryptoModule\AESEncryptor.cpp" />
+    <ClCompile Include="src\CryptoModule\SecureCleaner.cpp" />
+    <ClCompile Include="src\CryptoModule\AESUtils.cpp" />
+    <ClCompile Include="src\CryptoModule\AES_128.cpp" />
+    <ClCompile Include="src\DataModule\data.cpp" />
+    <ClCompile Include="src\main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="Porno.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\FileModule\FileUtils\FileName.h" />
+    <ClInclude Include="src\FileModule\FileUtils\Backup.h" />
+    <ClInclude Include="src\FileModule\FileProcess.h" />
+    <ClInclude Include="src\FileModule\FileIO.h" />
+    <ClInclude Include="include\nlohmann\json.hpp" />
+    <ClInclude Include="include\nlohmann\json_fwd.hpp" />
+    <ClInclude Include="src\CryptoModule\AESDecryptor.h" />
+    <ClInclude Include="src\CryptoModule\AESEncryptor.h" />
+    <ClInclude Include="src\CryptoModule\SecureCleaner.h" />
+    <ClInclude Include="src\CryptoModule\AESUtils.h" />
+    <ClInclude Include="src\CryptoModule\AES_128.h" />
+    <ClInclude Include="src\DataModule\Item.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="data.json" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

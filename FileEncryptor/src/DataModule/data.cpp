@@ -8,8 +8,6 @@
 
 #pragma once
 
-
-
 class DataManager {
 private:
     std::vector<Item> items;
@@ -191,10 +189,11 @@ public:
 
     // Получить элемент по индексу. Плохая реализация, индекс item должен быть из поля структуры
     Item* getItem(int id) {
-        if (id < items.size()) {
-            auto it = std::find_if(items.begin(), items.end(),
-                [id](const Item& item) { return item.id == id; });
-            return &items[it - begin(items)];
+        auto it = std::find_if(items.begin(), items.end(),
+            [id](const Item& item) { return item.id == id; });
+
+        if (it != items.end()) {
+            return &(*it);  // или return &items[it - items.begin()];
         }
         return nullptr;
     }
@@ -217,9 +216,10 @@ public:
 
     // Удалить элемент по индексу. Плохая реализация, индекс item должен быть из поля структуры
     void removeItem(int id) {
-        if (id < items.size()) {
-            auto it = std::remove_if(items.begin(), items.end(),
-                [id](const Item& item) { return item.id == id; });
+        auto it = std::remove_if(items.begin(), items.end(),
+            [id](const Item& item) { return item.id == id; });
+
+        if (it != items.end()) {
             items.erase(it, items.end());
         }
     }
