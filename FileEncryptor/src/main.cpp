@@ -3,7 +3,6 @@
 #include <windows.h>
 #include "CryptoModule/AESEncryptor.h"
 #include "CryptoModule/AESDecryptor.h"
-#include "DataModule/data.cpp"
 #include "cli/interface.cpp"
 
 using namespace std;
@@ -81,20 +80,17 @@ int main() {
 	aes128decrypt.setKey(key);
 	aes128decrypt.decryptBlock(ciphertext);
 
-    DataManager dm("data.json");
-    dm.load();
+    // Установка размеров консоли (ширина: 170, высота: 50)
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (hConsole != INVALID_HANDLE_VALUE) {
+        COORD bufferSize = { 170, 500 };
+        SetConsoleScreenBufferSize(hConsole, bufferSize);
 
-    // Äîáàâëÿåì íîâûé ýëåìåíò
-    Item new_item;
+        SMALL_RECT windowSize = { 0, 0, 169, 49 };
+        SetConsoleWindowInfo(hConsole, TRUE, &windowSize);
+    }
 
-    new_item.id = -1;
-    new_item.name = "Ïðîåêò Àëüôà";
-    new_item.description = "Èññëåäîâàòåëüñêèé ïðîåêò";
-    new_item.url = "https://example.com";
-    //dm.addItem(new_item);
-    dm.sortItemsById();
-    //dm.addItem("a", "hui", "porn.ru");
-    bool a = copyToClipboard(dm.getItem(64)->url);
-    dm.save();
-	return 0;
+    ScreenManager manager;
+    manager.run();
+    return 0;
 }

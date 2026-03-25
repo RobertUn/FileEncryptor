@@ -1,7 +1,8 @@
 #pragma once
 
 #include <string>
-#include "../include/nlohmann/json.hpp"
+//#include "../include/nlohmann/json.hpp"
+#include "../../include/nlohmann/json.hpp"
 
 using json = nlohmann::json;
 using ordered_json = nlohmann::ordered_json;
@@ -18,7 +19,7 @@ struct Item {
 	}
 };
 
-// Способ 0: фиксированный порядок
+// пїЅпїЅпїЅпїЅпїЅпїЅ 0: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 inline void to_json(ordered_json& j, const Item& item) {
     j["id"] = item.id;
     j["name"] = item.name;
@@ -33,12 +34,12 @@ inline void from_json(const ordered_json& j, Item& item) {
     j.at("url").get_to(item.url);
 }
 
-// Способ 1: макрос после определения структуры
+// пїЅпїЅпїЅпїЅпїЅпїЅ 1: пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 /*
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Item, id, name, description, url)
 */
 
-// Или Способ 2 (альтернатива):
+// пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ 2 (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ):
 /*
 namespace nlohmann {
     template<>

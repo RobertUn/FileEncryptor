@@ -3,7 +3,7 @@
 #include <map>
 #include <windows.h>
 #include <functional>
-#include "../DataModule/data.cpp"
+#include "../DataModule/DataManager.h"
 #include <stack>
 
 #pragma once
@@ -201,8 +201,10 @@ public:
 
     void show() override {
         clearScreen();
-        DataManager dm(MAIN_FILE);
-        if (dm.load()) {
+        // Убираем создание нового DataManager, используем существующий
+        if (dm.load()) {  // используем dm, а не новый объект
+            list_content.clear();  // очищаем перед заполнением
+            list_content[0] = "Назад";
             for (const auto& item : dm.getItems()) {
                 list_content[item.id] = item.name;
             }
