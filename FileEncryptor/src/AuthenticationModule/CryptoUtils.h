@@ -44,7 +44,7 @@ public:
     CryptoUtils() = default;
 
     Block getHash(std::string input);
-    Block getMixing(Block& hardwarePrint, Block inputHash);
+    Block getMixing(Block& hardwarePrint, Block& inputHash);
 };
 
 #endif // CRYPTOUTILS_H

@@ -2,12 +2,10 @@
 
 FileProcess::FileProcess(const std::string& input_file_path,
     const std::string& output_file_path,
-    const std::string& mode_cryption,
-    const Block& source_key)
-    : input_file_path(input_file_path)
-    , output_file_path(output_file_path)
-    , mode_cryption(mode_cryption)
-    , source_key(source_key) {
+    const Block& source_key) : 
+    input_file_path(input_file_path), 
+    output_file_path(output_file_path), 
+    source_key(source_key) {
 }
 
 std::pair<Chunk, size_t> FileProcess::removePadding(Chunk& chunk) {
@@ -30,18 +28,12 @@ std::pair<Chunk, size_t> FileProcess::removePadding(Chunk& chunk) {
     return { chunk, dataSize };  // Возвращаем чанк И реальный размер
 }
 
-void FileProcess::processFile() {
-    // Проверяем режим и создаем нужный объект ОДИН РАЗ
-    if (mode_cryption == "Encryption") {
-        encryptor = std::make_unique<AESEncryptor>();
-        encryptor->setKey(source_key);
-    }
-    else if (mode_cryption == "Decryption") {
-        decryptor = std::make_unique<AESDecryptor>();
-        decryptor->setKey(source_key);
-    }
+void FileProcess::processEncryption() {
+    // Создаём шифратор
+    encryptor = std::make_unique<AESEncryptor>();
+    encryptor->setKey(source_key);
 
-    // Открываем выходной файл ОДИН РАЗ
+    // Открываем выходной файл
     std::ofstream outFile(output_file_path, std::ios::binary);
     if (!outFile) throw std::runtime_error("Cannot open output file");
 
@@ -52,24 +44,56 @@ void FileProcess::processFile() {
         // 2. Обработать все чанки из ЭТОГО буфера
         while (fr.hasMoreChunksInBuffer()) {
             Chunk plainChunk = fr.getChunk(inputBuffer);
-            Chunk processedChunk;
+            Chunk encryptedChunk = encryptor->encryptBlock(plainChunk);
+            fw.postChunk(encryptedChunk);
 
-            if (mode_cryption == "Encryption") {
-                processedChunk = encryptor->encryptBlock(plainChunk);
+            // 3. Если буфер записи заполнился - сбросить в файл
+            if (fw.isBufferFull()) {
+                outFile.write(reinterpret_cast<char*>(fw.getBufferForWrite().data()),
+                    fw.getBufferSize());
+                fw.resetWriteBuffer();
             }
-            else if (mode_cryption == "Decryption") {
-                processedChunk = decryptor->decryptBlock(plainChunk);
+        }
 
-                // ТОЛЬКО ДЛЯ ДЕШИФРОВАНИЯ: проверяем последний чанк
-                if (fr.isEOF() && !fr.hasMoreChunksInBuffer()) {
-                    std::pair<Chunk, size_t> processedPair = removePadding(processedChunk);
-                    outFile.write(reinterpret_cast<char*>(processedPair.first.data()),
-                        processedPair.second);
-                    break;
-                }
+        // 4. Проверка завершения
+        if (fr.isEOF()) {
+            // Записать остатки
+            if (!fw.isBufferEmpty()) {
+                outFile.write(reinterpret_cast<char*>(fw.getBufferForWrite().data()),
+                    fw.getBufferSize());
+            }
+            break;
+        }
+    }
+}
+
+void FileProcess::processDecryption() {
+    // Создаём дешифратор
+    decryptor = std::make_unique<AESDecryptor>();
+    decryptor->setKey(source_key);
+
+    // Открываем выходной файл
+    std::ofstream outFile(output_file_path, std::ios::binary);
+    if (!outFile) throw std::runtime_error("Cannot open output file");
+
+    while (true) {
+        // 1. Получить буфер (прочитает файл если нужно)
+        Buffer& inputBuffer = fr.getBuffer(input_file_path);
+
+        // 2. Обработать все чанки из ЭТОГО буфера
+        while (fr.hasMoreChunksInBuffer()) {
+            Chunk encryptedChunk = fr.getChunk(inputBuffer);
+            Chunk decryptedChunk = decryptor->decryptBlock(encryptedChunk);
+
+            // ТОЛЬКО ДЛЯ ДЕШИФРОВАНИЯ: проверяем последний чанк
+            if (fr.isEOF() && !fr.hasMoreChunksInBuffer()) {
+                std::pair<Chunk, size_t> processedPair = removePadding(decryptedChunk);
+                outFile.write(reinterpret_cast<char*>(processedPair.first.data()),
+                    processedPair.second);
+                break;
             }
 
-            fw.postChunk(processedChunk);
+            fw.postChunk(decryptedChunk);
 
             // 3. Если буфер записи заполнился - сбросить в файл
             if (fw.isBufferFull()) {

@@ -54,7 +54,7 @@ Block CryptoUtils::getHash(std::string input) {
     return state;
 }
 
-Block CryptoUtils::getMixing(Block& hardwarePrint, Block inputHash) {
+Block CryptoUtils::getMixing(Block& hardwarePrint, Block& inputHash) {
     // Начальное смешивание
     Block state = inputHash;
     for (size_t i = 0; i < 16; i++) {
