@@ -12,11 +12,12 @@ namespace fs = std::filesystem;
 class Backup {
 private:
     fs::path targetFolder;
+    int maxFiles = 10;
     std::vector<std::pair<fs::path, fs::file_time_type>> filesWithDates;
 
     std::string generateUniqueName(const std::string& original_name);
     void getSortedFilesByDate();
-    void cleanupOldFiles(int maxFiles);
+    void cleanupOldFiles();
 
 public:
     explicit Backup(const fs::path& folderPath);

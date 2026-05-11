@@ -1,19 +1,21 @@
-﻿#include <iostream>
+﻿#pragma once
+
+#include <iostream>
 #include <string>
 #include <map>
 #include <windows.h>
 #include <functional>
 #include "../DataModule/DataManager.h"
+#include "../AuthenticationModule/CryptoManager.h"
 #include <stack>
-
-#pragma once
 
 using namespace std;
 
-const string MAIN_FILE = "data.json";
+const string MAIN_FILE = "data/data.json";
 
 enum class ScreenType {
 	MAIN,
+    CRYPTION,
 	CONTENT,
     ADD
 };
@@ -67,6 +69,71 @@ public:
     virtual ~BaseScreen() = default;
 };
 
+class CryptionScreen : public BaseScreen {
+private:
+    CryptoManager cm;
+    map<int, pair<string, function<void()>>> menu_options;
+
+    void checkFileStatus() {
+        if (cm.isFileEncrypted()) {
+            status = "Файл зашифрован";
+        }
+        else {
+            status = "Файл расшифрован";
+        }
+    }
+
+    void crypting() {
+        string input_key;
+        cout << "\nВведите ключ для шифрования/дешифрования: ";
+        cin >> input_key;
+
+        if (cin.fail()) {
+            cin.clear();
+        }
+
+        cm.processCrypto(input_key);
+    }
+
+public:
+    CryptionScreen() {
+        menu_options = {
+            {0, {"Назад", [this] { nextScreen = ScreenType::MAIN; }}},
+            {1, {"Шифрование", [this] { crypting(); }}},
+            {2, {"Загрузий последйни бакэп", [this] { cm.restoreLastFile(); }}},
+            {3, {"Просмотреть статус файла", [this] { checkFileStatus(); }}}
+        };
+        nextScreen = ScreenType::CRYPTION;
+    };
+
+    void show() override {
+        clearScreen();
+        map<int, string> list_options;
+        for (const auto& [key, value] : menu_options) {
+            list_options[key] = value.first;
+        }
+        drawBox("Меню шифрования", list_options);
+    }
+
+    void handleInput(int input) override {
+        if (menu_options.count(input)) {
+            try {
+                nextScreen = ScreenType::CRYPTION;
+                menu_options[input].second();
+                //status = "Успешно: " + menu_options[input].first;
+            }
+            catch (...) {
+                status = "Ошибка при выполнении операции!";
+                nextScreen = ScreenType::CRYPTION;
+            }
+        }
+        else {
+            status = "Неверный пункт меню!";
+            nextScreen = ScreenType::CRYPTION;
+        }
+    }
+};
+
 class MainScreen : public BaseScreen {
 private:
     map<int, pair<string, function<void()>>> menu_options;
@@ -79,7 +146,7 @@ public:
     MainScreen() {
         menu_options = {
             {0, {"Выход", [this] { exitProgramm(); }}},
-            {1, {"Расшифровать файл", [this] {}} },
+            {1, {"Шифрование", [this] {nextScreen = ScreenType::CRYPTION; }} },
             {2, {"Просмотреть содержимое", [this] { nextScreen = ScreenType::CONTENT; }}}
         };
         nextScreen = ScreenType::MAIN;
@@ -258,10 +325,15 @@ public:
     ScreenManager() {
         screens[ScreenType::MAIN] = make_unique<MainScreen>();
         screens[ScreenType::CONTENT] = make_unique<ContentScreen>();
+        screens[ScreenType::CRYPTION] = make_unique<CryptionScreen>();
     }
 
     void run() {
         while (true) {
+            if (!screens.count(currentScreen) || !screens[currentScreen]) {
+                cerr << "Ошибка: экран " << static_cast<int>(currentScreen) << " не инициализирован!" << endl;
+                break;
+            }
             screens[currentScreen]->show();
 
             int choice;

@@ -25,9 +25,9 @@ private:
     void preCompute();
 
 public:
-    CryptoManager(const std::string& input_key);
+    CryptoManager();
 
-    void processCrypto();
+    void processCrypto(const std::string& input_key);
 
     bool restoreLastFile();
 

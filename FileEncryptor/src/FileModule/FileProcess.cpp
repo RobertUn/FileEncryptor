@@ -29,88 +29,79 @@ std::pair<Chunk, size_t> FileProcess::removePadding(Chunk& chunk) {
 }
 
 void FileProcess::processEncryption() {
-    // Создаём шифратор
     encryptor = std::make_unique<AESEncryptor>();
     encryptor->setKey(source_key);
 
-    // Открываем выходной файл
     std::ofstream outFile(output_file_path, std::ios::binary);
     if (!outFile) throw std::runtime_error("Cannot open output file");
 
+    std::vector<Chunk> plainChunks;
+
+    // Читаем все данные
     while (true) {
-        // 1. Получить буфер (прочитает файл если нужно)
         Buffer& inputBuffer = fr.getBuffer(input_file_path);
-
-        // 2. Обработать все чанки из ЭТОГО буфера
         while (fr.hasMoreChunksInBuffer()) {
-            Chunk plainChunk = fr.getChunk(inputBuffer);
-            Chunk encryptedChunk = encryptor->encryptBlock(plainChunk);
-            fw.postChunk(encryptedChunk);
-
-            // 3. Если буфер записи заполнился - сбросить в файл
-            if (fw.isBufferFull()) {
-                outFile.write(reinterpret_cast<char*>(fw.getBufferForWrite().data()),
-                    fw.getBufferSize());
-                fw.resetWriteBuffer();
-            }
+            plainChunks.push_back(fr.getChunk(inputBuffer));
         }
+        if (fr.isEOF()) break;
+    }
 
-        // 4. Проверка завершения
-        if (fr.isEOF()) {
-            // Записать остатки
-            if (!fw.isBufferEmpty()) {
-                outFile.write(reinterpret_cast<char*>(fw.getBufferForWrite().data()),
-                    fw.getBufferSize());
-            }
-            break;
+    // Добавляем паддинг к последнему чанку
+    if (!plainChunks.empty()) {
+        Chunk& lastChunk = plainChunks.back();
+        size_t lastChunkDataSize = lastChunk.size();
+
+        // Для AES блок 16 байт, паддинг по PKCS#7
+        unsigned char paddingNeeded = 16 - (lastChunkDataSize % 16);
+        if (paddingNeeded == 0) paddingNeeded = 16; // Полный блок паддинга
+
+        // Расширяем последний чанк до 16 байт с паддингом
+        for (size_t i = lastChunkDataSize; i < 16; i++) {
+            lastChunk[i] = paddingNeeded;
         }
+    }
+
+    // Шифруем и записываем
+    for (const auto& plainChunk : plainChunks) {
+        Chunk encryptedChunk = encryptor->encryptBlock(plainChunk);
+        outFile.write(reinterpret_cast<const char*>(encryptedChunk.data()), 16);
     }
 }
 
 void FileProcess::processDecryption() {
-    // Создаём дешифратор
     decryptor = std::make_unique<AESDecryptor>();
     decryptor->setKey(source_key);
 
-    // Открываем выходной файл
     std::ofstream outFile(output_file_path, std::ios::binary);
     if (!outFile) throw std::runtime_error("Cannot open output file");
 
+    std::vector<Chunk> allDecryptedChunks;
+
+    // Сначала дешифруем все блоки
     while (true) {
-        // 1. Получить буфер (прочитает файл если нужно)
         Buffer& inputBuffer = fr.getBuffer(input_file_path);
 
-        // 2. Обработать все чанки из ЭТОГО буфера
         while (fr.hasMoreChunksInBuffer()) {
             Chunk encryptedChunk = fr.getChunk(inputBuffer);
             Chunk decryptedChunk = decryptor->decryptBlock(encryptedChunk);
-
-            // ТОЛЬКО ДЛЯ ДЕШИФРОВАНИЯ: проверяем последний чанк
-            if (fr.isEOF() && !fr.hasMoreChunksInBuffer()) {
-                std::pair<Chunk, size_t> processedPair = removePadding(decryptedChunk);
-                outFile.write(reinterpret_cast<char*>(processedPair.first.data()),
-                    processedPair.second);
-                break;
-            }
-
-            fw.postChunk(decryptedChunk);
-
-            // 3. Если буфер записи заполнился - сбросить в файл
-            if (fw.isBufferFull()) {
-                outFile.write(reinterpret_cast<char*>(fw.getBufferForWrite().data()),
-                    fw.getBufferSize());
-                fw.resetWriteBuffer();
-            }
+            allDecryptedChunks.push_back(decryptedChunk);
         }
 
-        // 4. Проверка завершения
-        if (fr.isEOF()) {
-            // Записать остатки
-            if (!fw.isBufferEmpty()) {
-                outFile.write(reinterpret_cast<char*>(fw.getBufferForWrite().data()),
-                    fw.getBufferSize());
-            }
-            break;
+        if (fr.isEOF()) break;
+    }
+
+    // Обрабатываем последний блок с паддингом
+    if (!allDecryptedChunks.empty()) {
+        // Последний блок
+        auto [lastChunk, dataSize] = removePadding(allDecryptedChunks.back());
+
+        // Записываем все блоки, кроме последнего, целиком
+        for (size_t i = 0; i < allDecryptedChunks.size() - 1; i++) {
+            outFile.write(reinterpret_cast<char*>(allDecryptedChunks[i].data()),
+                16);
         }
+
+        // Записываем последний блок без паддинга
+        outFile.write(reinterpret_cast<char*>(lastChunk.data()), dataSize);
     }
 }

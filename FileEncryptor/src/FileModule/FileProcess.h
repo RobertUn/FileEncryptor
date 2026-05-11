@@ -15,7 +15,6 @@ class FileProcess {
 private:
     std::string input_file_path;
     std::string output_file_path;
-    std::string mode_cryption;
     Block source_key;
     FileRead fr;
     FileWrite fw;
@@ -25,11 +24,11 @@ private:
 public:
     FileProcess(const std::string& input_file_path,
         const std::string& output_file_path,
-        const std::string& mode_cryption,
         const Block& source_key);
 
     std::pair<Chunk, size_t> removePadding(Chunk& chunk);
-    void processFile();
+    void processEncryption();
+    void processDecryption();
 };
 
 #endif // FILEPROCESS_H

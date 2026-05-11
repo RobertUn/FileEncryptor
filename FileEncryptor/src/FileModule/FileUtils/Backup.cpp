@@ -55,7 +55,7 @@ void Backup::getSortedFilesByDate() {
     }
 }
 
-void Backup::cleanupOldFiles(int maxFiles) {
+void Backup::cleanupOldFiles() {
     getSortedFilesByDate();
 
     if (filesWithDates.size() > maxFiles) {
@@ -86,7 +86,7 @@ bool Backup::copyFile(const std::string& sourcePath) {
         std::cout << "Создан бэкап: " << unique_name << std::endl;
 
         // Удаляем старые
-        cleanupOldFiles(3);
+        cleanupOldFiles();
 
         return true;
     }

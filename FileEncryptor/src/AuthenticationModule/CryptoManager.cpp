@@ -18,11 +18,11 @@ void CryptoManager::preCompute() {
     }
 }
 
-CryptoManager::CryptoManager(const std::string& input_key) : input_key(input_key), bc("data/backup") {
+CryptoManager::CryptoManager() : bc("data/backup") {
     preCompute();
 }
 
-void CryptoManager::processCrypto() {
+void CryptoManager::processCrypto(const std::string& input_key) {
     Block harware_print = hp.getHardwarePrint();
     Block hash_key = cu.getHash(input_key);
     Block mixing_key = cu.getMixing(harware_print, hash_key);
@@ -69,5 +69,5 @@ bool CryptoManager::restoreLastFile() {
 }
 
 bool CryptoManager::isFileEncrypted() {
-    return mode_cryption == "Encryption";
+    return mode_cryption != "Encryption";
 }
