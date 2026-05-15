@@ -4,10 +4,10 @@
 #include "FileModule/FileUtils/Backup.h"
 #include "CryptoModule/AESEncryptor.h"
 #include "CryptoModule/AESDecryptor.h"
-#include "cli/interface.cpp"
 #include "AuthenticationModule/CryptoUtils.h"
 #include "FileModule/FileProcess.h"
 #include "AuthenticationModule/CryptoManager.h"
+#include "CLIModule/ScreenManager.h"
 
 #include <setupapi.h>
 #include <devguid.h>
@@ -96,7 +96,7 @@ int main() {
         SMALL_RECT windowSize = { 0, 0, 169, 49 };
         SetConsoleWindowInfo(hConsole, TRUE, &windowSize);
     }
-    
+
     ScreenManager manager;
     manager.run();
 }
